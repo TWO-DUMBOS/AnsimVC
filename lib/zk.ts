@@ -1,4 +1,5 @@
-// 현재는 mock. snarkjs 연동으로 내부만 교체해야 함.
+// snarkjs(Groth16)로 브라우저에서 증명을 생성한다. 회로: circuits/eligibility.circom
+// 산출물은 public/zk/ 에서 정적 파일로 서빙된다.
 
 import type { ZKInput, ZKProofBundle } from "./types";
 import { getZKPublicInputs } from "./policies";
@@ -20,30 +21,24 @@ export async function generateProof(
     ...pub,
   };
 
-  // ===== MOCK 시작 (교체할 구간) =====
-  // 실제 구현 예정:
-  //   const { proof, publicSignals } = await groth16.fullProve(
-  //     input, "/zk/eligibility.wasm", "/zk/eligibility_final.zkey"
-  //   );
-  await new Promise((r) => setTimeout(r, 2000)); // 증명 생성 체감 시간
+  // snarkjs는 서버 번들에 들어가면 안 되므로 호출 시점에 동적 import (브라우저 전용)
+  // @ts-expect-error snarkjs는 타입 선언이 없다
+  const { groth16 } = await import("snarkjs");
 
-  const isEligible =
-    input.age >= input.minAge &&
-    input.age <= input.maxAge &&
-    input.income <= input.incomeThreshold;
+  // 회로 signal 이름 = ZKInput 필드명. 값은 문자열로 넘긴다.
+  const circuitInput = Object.fromEntries(
+    Object.entries(input).map(([k, v]) => [k, String(v)])
+  );
 
-  const proof = { __mock: true, protocol: "groth16", curve: "bn128" };
-  const publicSignals = [
-    isEligible ? "1" : "0",
-    String(input.minAge),
-    String(input.maxAge),
-    String(input.incomeThreshold),
-  ];
-  // ===== MOCK 끝 =====
+  const { proof, publicSignals } = await groth16.fullProve(
+    circuitInput,
+    "/zk/eligibility.wasm",
+    "/zk/eligibility_final.zkey"
+  );
 
   return {
     proof,
-    publicSignals,
+    publicSignals, // [isEligible, minAge, maxAge, incomeThreshold]
     policyId,
     createdAt: new Date().toISOString(),
   };
