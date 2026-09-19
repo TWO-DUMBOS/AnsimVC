@@ -96,7 +96,8 @@ async function buildNarrative(
   if (!process.env.OPENAI_API_KEY) return fallbackResult(ruleResults);
 
   try {
-    const openai = new OpenAI({ timeout: 8000, maxRetries: 1 });
+    // 응답이 느리면 오래 기다리지 않고 바로 규칙 기반 폴백으로 넘어간다 (최악의 경우 6초)
+    const openai = new OpenAI({ timeout: 6000, maxRetries: 0 });
 
     const completion = await openai.chat.completions.create({
       model: MODEL,

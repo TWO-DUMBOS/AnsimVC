@@ -42,9 +42,18 @@ export default function ProofPage() {
   const started = useRef(false)
 
   async function run() {
+    // 이전 실행의 증명이 남아 있으면 이번 실행이 실패해도 화면4가 옛 증명을 검증하게 되므로 먼저 지운다.
+    try {
+      sessionStorage.removeItem("ansimvc:vc")
+      sessionStorage.removeItem("ansimvc:zkProof")
+    } catch {
+      // sessionStorage를 못 쓰는 환경이어도 화면은 죽지 않게 진행
+    }
+
     const profile = readJSON<UserProfile>("ansimvc:userProfile")
     const diagnosis = readJSON<DiagnoseResponse>("ansimvc:diagnoseResult")
-    if (!profile || !diagnosis) {
+    // 저장값이 깨진 모양이면(matches 없음) 스피너에 갇히지 않고 처음부터 다시 하도록 안내한다.
+    if (!profile || !diagnosis || !Array.isArray(diagnosis.matches)) {
       setStatus("no-input")
       return
     }
@@ -143,6 +152,10 @@ export default function ProofPage() {
           >
             다시 시도
           </button>
+          {/* 입력값 문제처럼 재시도로 해결되지 않는 경우에 막다른 길이 되지 않도록 */}
+          <Link href="/eligibility" className="text-sm font-medium text-brand">
+            처음부터 다시 시작
+          </Link>
         </div>
       )}
 

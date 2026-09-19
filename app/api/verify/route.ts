@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
-import { readFile } from "fs/promises";
-import path from "path";
 import type { VerifyRequest, VerifyResponse } from "@/lib/types";
 import { getPolicy, resolveIncomeThreshold } from "@/lib/policies";
+// 검증키는 공개 파일이다 (브라우저용 산출물과 같은 파일). 번들에 포함시켜 배포 환경의 파일 경로에 의존하지 않는다.
+import vKey from "@/public/zk/verification_key.json";
 // @ts-expect-error snarkjs는 타입 선언이 없다
 import { groth16 } from "snarkjs";
-
-// 검증키는 공개 파일이다 (브라우저용 산출물과 같은 위치)
-const VKEY_PATH = path.join(process.cwd(), "public", "zk", "verification_key.json");
-let vKeyCache: unknown;
 
 export async function POST(req: Request) {
   try {
@@ -36,10 +32,9 @@ export async function POST(req: Request) {
       });
 
     // 1) 암호학적 검증: proof가 검증키 + publicSignals 에 대해 유효한가
-    vKeyCache ??= JSON.parse(await readFile(VKEY_PATH, "utf8"));
     let proofOk = false;
     try {
-      proofOk = await groth16.verify(vKeyCache, publicSignals, proof);
+      proofOk = await groth16.verify(vKey, publicSignals, proof);
     } catch {
       proofOk = false; // 모양이 깨진 proof/publicSignals
     }

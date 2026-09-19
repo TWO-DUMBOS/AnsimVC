@@ -31,20 +31,24 @@ const INITIAL_FORM: FormState = {
   annualIncomeManwon: "3000",
 }
 
+// 빈 값·음수·소수는 0 이상의 정수로 보정한다.
+// (ZK 회로는 음수 소득을 거부하므로 그대로 두면 증명 단계에서 계속 실패한다)
+const toNonNegInt = (s: string) => Math.max(0, Math.round(Number(s) || 0))
+
 function buildUserProfile(form: FormState): UserProfile {
   // 정책A(대구 청년월세)는 '부모와 별도 거주 청년' 대상이라 사실상 1인 가구.
   // UserProfile에는 필드를 유지해 향후 다인 가구 확장 가능하게 둠.
   const householdSize = 1
 
   return {
-    age: Number(form.age),
+    age: toNonNegInt(form.age),
     // 연소득(만원) → 월 소득(원)
-    monthlyIncome: Math.round((Number(form.annualIncomeManwon) * 10000) / 12),
+    monthlyIncome: Math.round((toNonNegInt(form.annualIncomeManwon) * 10000) / 12),
     householdSize,
     region: form.isDaegu ? "대구광역시" : "",
     isHouseholdHead: form.isIndependent,
-    monthlyRent: Number(form.rentManwon) * 10000,
-    deposit: Number(form.depositManwon) * 10000,
+    monthlyRent: toNonNegInt(form.rentManwon) * 10000,
+    deposit: toNonNegInt(form.depositManwon) * 10000,
     hasOwnHouse: !form.hasNoHouse,
   }
 }
