@@ -59,10 +59,14 @@ export const POLICIES: Policy[] = [
       maxAge: 34,
       // 소득 기준(중위 60%)은 대구광역시 청년월세 지원사업 공고 원문으로 확인 완료.
       incomeBasis: { type: "median_ratio", ratio: 0.6 },
-      // [미확인] 공식 공고에서 확인 실패. 2차 자료 기준 추정값이며
-      // MVP 데모 범위에서는 판정에 영향 없음.
-      maxRent: 700_000,
-      maxDeposit: 50_000_000,
+      // 보증금·월세 상한 미적용: 대구시 2026 청년월세 지원사업 공고에서
+      // 해당 요건이 확인되지 않음. 기존 값(보증금 5천만원/월세 70만원)은
+      // 국토교통부 청년월세 특별지원의 옛 전국 기준과 일치했으나, 그 전국
+      // 사업조차 2026년 2차 사업부터 이 요건이 폐지된 것으로 조사됨.
+      // 확인되지 않은 요건으로 자격자를 탈락시키는 것보다 적용하지 않는
+      // 쪽이 안전하다고 판단해 null(기준 없음) 처리.
+      maxRent: null,
+      maxDeposit: null,
       requireNoOwnHouse: true,
       requireHouseholdHead: false,
     },
