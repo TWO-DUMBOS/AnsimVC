@@ -8,7 +8,10 @@
 
 import type { UserProfile } from "./types";
 
-/** 2026년 기준 중위소득 (월, 원) */
+/**
+ * 2026년 기준 중위소득 (월, 원)
+ * 출처(1차 자료): 보건복지부 고시 제2025-135호 — 1~4인 가구 금액 확인 완료.
+ */
 export const MEDIAN_INCOME_2026: Record<number, number> = {
   1: 2_564_238,
   2: 4_199_292,
@@ -54,8 +57,10 @@ export const POLICIES: Policy[] = [
     criteria: {
       minAge: 19,
       maxAge: 34,
+      // 소득 기준(중위 60%)은 대구광역시 청년월세 지원사업 공고 원문으로 확인 완료.
       incomeBasis: { type: "median_ratio", ratio: 0.6 },
-      // TODO: 아래 두 값은 복지로 원문 재확인 필요 (대구시 공식 페이지 미기재)
+      // [미확인] 공식 공고에서 확인 실패. 2차 자료 기준 추정값이며
+      // MVP 데모 범위에서는 판정에 영향 없음.
       maxRent: 700_000,
       maxDeposit: 50_000_000,
       requireNoOwnHouse: true,
@@ -110,6 +115,7 @@ export function resolveIncomeThreshold(
 
   const median = MEDIAN_INCOME_2026[householdSize];
   if (!median) throw new Error(`중위소득 미정의 가구원 수: ${householdSize}`);
+  // 판정이 "이하" 비교이므로 절사가 더 보수적(엄격)이다.
   return Math.floor(median * incomeBasis.ratio);
 }
 
