@@ -1,6 +1,36 @@
+# zk toolchain
 circom.exe
 *.wtns
 *.ptau
 *.zkey
+# 증명 생성에 필요하므로 final zkey만 예외적으로 커밋 (약 40KB)
+!zk/build/income_check_final.zkey
+
+# deps
 node_modules/
+
+# next.js
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
+
+# misc
 .DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# claude
+.claude/settings.local.json
