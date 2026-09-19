@@ -8,7 +8,7 @@ import type { ZKProofBundle } from "@/lib/types";
 
 // 앞 화면이 sessionStorage에 값을 넣어주면 그걸 쓰고, 없으면 데모 시나리오(26세/월 250만/1인)로 동작한다.
 //   "ansimvc:profile"  : UserProfile JSON      "ansimvc:policyId" : Policy.id
-//   "ansimvc:proof"    : 이 화면이 저장하는 ZKProofBundle JSON (결과 화면에서 읽어 /api/verify 호출)
+//   "ansimvc:zkProof"  : 이 화면이 저장하는 ZKProofBundle JSON (화면4에서 읽어 /api/verify 호출)
 const DEMO_PROFILE = { age: 26, monthlyIncome: 2_500_000, householdSize: 1 };
 const DEMO_POLICY_ID = "daegu-youth-deposit-loan";
 
@@ -42,7 +42,7 @@ export default function ProofPage() {
         ),
         sleep(STEPS.length * STEP_MS),
       ]);
-      sessionStorage.setItem("ansimvc:proof", JSON.stringify(result));
+      sessionStorage.setItem("ansimvc:zkProof", JSON.stringify(result));
       setBundle(result);
     } catch {
       setError("증명 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.");
