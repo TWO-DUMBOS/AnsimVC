@@ -1,24 +1,20 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# zk toolchain
+circom.exe
+*.wtns
+*.ptau
+*.zkey
+# 증명 생성에 필요하므로 final zkey만 예외적으로 커밋 (약 40KB)
+!zk/build/income_check_final.zkey
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
+# deps
+node_modules/
 
 # next.js
 /.next/
 /out/
-
-# production
 /build
+next-env.d.ts
+*.tsbuildinfo
 
 # misc
 .DS_Store
@@ -36,8 +32,5 @@ yarn-error.log*
 # vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
+# claude
 .claude/settings.local.json
