@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI, { APIConnectionTimeoutError } from "openai";
-import type { DiagnoseRequest, DiagnoseResponse, PolicyMatch, UserProfile } from "@/lib/types";
+import type { DiagnoseRequest, DiagnoseResponse, PolicyMatch } from "@/lib/types";
 import { POLICIES, checkEligibility, type Policy } from "@/lib/policies";
 
 // 이 호출은 이미 확정된 판정 결과를 문장으로 다듬는 것뿐이라 추론이 필요 없다.
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       return { policy, eligible, reasons, missing, score };
     });
 
-    const { matches, summary } = await buildNarrative(profile, ruleResults);
+    const { matches, summary } = await buildNarrative(ruleResults);
 
     const response: DiagnoseResponse = {
       matches,
@@ -91,7 +91,6 @@ function enforceInvariants(r: RuleResult, reasons: string[], missing: string[]):
 
 /** 규칙 기반 판정 결과를 AI로 자연스러운 문장으로 다듬는다. 실패 시 규칙 기반 결과 그대로 반환. */
 async function buildNarrative(
-  profile: UserProfile,
   ruleResults: RuleResult[]
 ): Promise<{ matches: PolicyMatch[]; summary: string }> {
   if (!process.env.OPENAI_API_KEY) return fallbackResult(ruleResults);
@@ -116,8 +115,9 @@ async function buildNarrative(
         },
         {
           role: "user",
+          // 개인정보(나이·소득 등 원본 프로필)는 외부 AI에 보내지 않는다.
+          // 이미 규칙으로 확정된 판정 결과(정책별 통과 여부·사유)만 전달한다.
           content: JSON.stringify({
-            profile,
             results: ruleResults.map((r) => ({
               policyId: r.policy.id,
               policyName: r.policy.name,

@@ -4,7 +4,9 @@ circom.exe
 *.ptau
 *.zkey
 # 증명 생성에 필요하므로 final zkey만 예외적으로 커밋 (약 40KB)
-!zk/build/income_check_final.zkey
+!public/zk/eligibility_final.zkey
+# circom 빌드 중간 산출물 (재생성 가능). 브라우저용 산출물은 public/zk/ 에 둔다
+circuits/build/
 
 # deps
 node_modules/
