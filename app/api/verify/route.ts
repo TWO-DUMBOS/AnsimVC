@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
+import { readFile } from "fs/promises";
+import path from "path";
 import type { VerifyRequest, VerifyResponse } from "@/lib/types";
 import { getPolicy, resolveIncomeThreshold } from "@/lib/policies";
+// @ts-expect-error snarkjs는 타입 선언이 없다
+import { groth16 } from "snarkjs";
+
+// 검증키는 공개 파일이다 (브라우저용 산출물과 같은 위치)
+const VKEY_PATH = path.join(process.cwd(), "public", "zk", "verification_key.json");
+let vKeyCache: unknown;
 
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as VerifyRequest;
-    const { policyId, publicSignals } = body;
+    const { policyId, proof, publicSignals } = body;
 
     if (!policyId || !Array.isArray(publicSignals)) {
       return NextResponse.json<VerifyResponse>(
@@ -19,13 +27,26 @@ export async function POST(req: Request) {
       );
     }
 
-    // ===== MOCK 시작 (교체할 구간) =====
-    // 실제 구현 예정:
-    //   const vKey = JSON.parse(await fs.readFile("zk/verification_key.json","utf8"));
-    //   const ok = await groth16.verify(vKey, publicSignals, proof);
-    //
-    // 중요: 증명 검증과 별개로, publicSignals가 서버가 아는
-    //       정책 기준과 일치하는지 반드시 대조해야 함.
+    const respond = (valid: boolean, error?: string) =>
+      NextResponse.json<VerifyResponse>({
+        valid,
+        policyId,
+        checkedAt: new Date().toISOString(),
+        ...(error ? { error } : {}),
+      });
+
+    // 1) 암호학적 검증: proof가 검증키 + publicSignals 에 대해 유효한가
+    vKeyCache ??= JSON.parse(await readFile(VKEY_PATH, "utf8"));
+    let proofOk = false;
+    try {
+      proofOk = await groth16.verify(vKeyCache, publicSignals, proof);
+    } catch {
+      proofOk = false; // 모양이 깨진 proof/publicSignals
+    }
+    if (!proofOk) return respond(false, "INVALID_PROOF");
+
+    // 2) 증명이 맞아도 publicSignals가 서버가 아는 정책 기준과 일치하는지 반드시 대조해야 함
+    //    (사용자가 임의의 기준값으로 만든 증명을 막는다)
     //
     // ⚠️ incomeThreshold는 가구원 수(householdSize)에 따라 달라지는데,
     //    VerifyRequest에는 householdSize가 없어 정확한 값을 알 수 없다.
@@ -38,18 +59,16 @@ export async function POST(req: Request) {
     );
 
     const signalsMatch =
+      publicSignals.length === 4 &&
       publicSignals[1] === String(minAge) &&
       publicSignals[2] === String(maxAge) &&
       possibleThresholds.some((t) => publicSignals[3] === String(t));
+    if (!signalsMatch) return respond(false, "SIGNAL_MISMATCH");
 
-    const valid = publicSignals[0] === "1" && signalsMatch;
-    // ===== MOCK 끝 =====
+    // 3) 유효한 증명이 "자격 충족(1)"을 말하는가. 0이면 미달 사실을 증명한 것
+    if (publicSignals[0] !== "1") return respond(false, "NOT_ELIGIBLE");
 
-    return NextResponse.json<VerifyResponse>({
-      valid,
-      policyId,
-      checkedAt: new Date().toISOString(),
-    });
+    return respond(true);
   } catch {
     return NextResponse.json<VerifyResponse>(
       {
