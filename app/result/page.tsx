@@ -8,6 +8,13 @@ import StepIndicator from "@/components/ui/StepIndicator"
 
 type Status = "loading" | "no-proof" | "error" | "ready"
 
+// /api/verify 의 error 코드 → 사용자용 문구
+const ERROR_LABELS: Record<string, string> = {
+  INVALID_PROOF: "증명이 유효하지 않습니다 (위조되었거나 손상됨)",
+  SIGNAL_MISMATCH: "증명에 담긴 공개 기준값이 정책 기준과 다릅니다",
+  NOT_ELIGIBLE: "증명은 유효하지만 연령·소득 요건 미달로 확인되었습니다",
+}
+
 function policyNameOf(policyId: string): string {
   try {
     return getPolicy(policyId).name
@@ -79,7 +86,7 @@ export default function ResultPage() {
       <div>
         <h1 className="text-xl font-bold">검증 완료</h1>
         <p className="mt-1 text-sm text-muted">
-          ZK-Proof를 발급기관 서버에 제출해 개인정보 노출 없이 자격을 검증했습니다.
+          ZK-Proof를 서버에 제출해 나이·소득 원본을 공개하지 않고 연령·소득 요건을 검증했습니다.
         </p>
       </div>
 
@@ -125,10 +132,12 @@ export default function ResultPage() {
             </div>
             <p className="mt-2 text-sm text-muted">
               {result.valid
-                ? "나이·소득 등 민감정보를 공개하지 않고도 자격 요건을 충족함을 증명했습니다."
-                : "제출된 증명이 정책 기준과 일치하지 않습니다."}
+                ? "나이·소득 원본을 공개하지 않고도 연령·소득 요건을 충족함을 증명했습니다."
+                : "제출된 증명으로는 연령·소득 요건 충족을 확인할 수 없습니다."}
             </p>
-            {result.error && <p className="mt-2 text-sm text-muted">사유: {result.error}</p>}
+            {result.error && (
+              <p className="mt-2 text-sm text-muted">사유: {ERROR_LABELS[result.error] ?? result.error}</p>
+            )}
             <p className="mt-3 text-xs text-muted">
               검증 시각 {new Date(result.checkedAt).toLocaleString("ko-KR")}
             </p>
