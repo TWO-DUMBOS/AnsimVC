@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import OpenAI, { APIConnectionTimeoutError } from "openai";
 import type { DiagnoseRequest, DiagnoseResponse, PolicyMatch, UserProfile } from "@/lib/types";
 import { POLICIES, checkEligibility, type Policy } from "@/lib/policies";
+
+// 이 호출은 이미 확정된 판정 결과를 문장으로 다듬는 것뿐이라 추론이 필요 없다.
+// gpt-5.5(플래그십 추론 모델) 대신 저지연·저비용 경량 모델(GPT-5.6 Luna)을 쓴다.
+const MODEL = "gpt-5.6-luna";
 
 type RuleResult = {
   policy: Policy;
@@ -73,6 +77,18 @@ function fallbackResult(ruleResults: RuleResult[]) {
   };
 }
 
+/**
+ * LLM 출력은 신뢰하지 않고 규칙 결과로 보정한다.
+ * eligible=false인데 missing이 비어 있으면(또는 eligible=true인데 reasons가 비어 있으면)
+ * 탈락/통과 사유가 화면에 하나도 안 보이는 시연 핵심 화면 버그로 이어지므로,
+ * 이 경우 규칙 기반 원본(r.missing / r.reasons)으로 강제 복구한다.
+ */
+function enforceInvariants(r: RuleResult, reasons: string[], missing: string[]): PolicyMatch {
+  const safeMissing = !r.eligible && missing.length === 0 ? r.missing : missing;
+  const safeReasons = r.eligible && reasons.length === 0 ? r.reasons : reasons;
+  return toPolicyMatch(r, safeReasons, safeMissing);
+}
+
 /** 규칙 기반 판정 결과를 AI로 자연스러운 문장으로 다듬는다. 실패 시 규칙 기반 결과 그대로 반환. */
 async function buildNarrative(
   profile: UserProfile,
@@ -81,10 +97,11 @@ async function buildNarrative(
   if (!process.env.OPENAI_API_KEY) return fallbackResult(ruleResults);
 
   try {
-    const openai = new OpenAI();
+    const openai = new OpenAI({ timeout: 8000, maxRetries: 1 });
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.5",
+      model: MODEL,
+      reasoning_effort: "none",
       response_format: { type: "json_object" },
       messages: [
         {
@@ -124,8 +141,8 @@ async function buildNarrative(
     const matches = ruleResults.map((r) => {
       const ai = parsed.policies?.find((p) => p.policyId === r.policy.id);
       const reasons = isStringArray(ai?.reasons) && ai.reasons.length > 0 ? ai.reasons : r.reasons;
-      const missing = isStringArray(ai?.missing) ? ai.missing : r.missing;
-      return toPolicyMatch(r, reasons, missing);
+      const missing = isStringArray(ai?.missing) && ai.missing.length > 0 ? ai.missing : r.missing;
+      return enforceInvariants(r, reasons, missing);
     });
 
     const summary =
@@ -135,8 +152,9 @@ async function buildNarrative(
 
     return { matches, summary };
   } catch (err) {
-    // OpenAI 호출/파싱 실패 — 규칙 기반 결과로 화면이 죽지 않게 진행
-    console.error("[diagnose] OpenAI 호출 실패, 규칙 기반 결과로 폴백:", err);
+    // OpenAI 호출/파싱 실패(타임아웃 포함) — 규칙 기반 결과로 화면이 죽지 않게 진행
+    const reason = err instanceof APIConnectionTimeoutError ? "타임아웃" : "오류";
+    console.error(`[diagnose] OpenAI 호출 실패(${reason}), 규칙 기반 결과로 폴백:`, err);
     return fallbackResult(ruleResults);
   }
 }
