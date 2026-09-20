@@ -5,8 +5,8 @@
   --foreground: #171717;
 
   /* 브랜드 색 (teal) — 밝기 대비가 필요한 다크 배경 기준으로 고정 */
-  --brand: #14b8a6;
-  --brand-hover: #0d9488;
+  --brand: #00c7a9;
+  --brand-hover: #00907a;
 
   /* 라이트 모드 구조색 */
   --surface: rgba(0, 0, 0, 0.04);
